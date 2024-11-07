@@ -23,7 +23,9 @@ def test_basic(node_factory, bitcoind, get_plugin):  # noqa: F811
     ):
         l1.rpc.call("consolidate", {"feerate": 2000, "min_utxos": 5})
 
-    with pytest.raises(RpcError, match=r"Not enough UTXO's to consolidate: 5<10"):
+    with pytest.raises(
+        RpcError, match=r"Not enough UTXO's to consolidate: Current:5 Wanted:>=10"
+    ):
         l1.rpc.call("consolidate", {"feerate": 8500, "min_utxos": 10})
 
     result = l1.rpc.call("consolidate", {"feerate": 8500, "min_utxos": 5})
@@ -62,7 +64,11 @@ def test_below(node_factory, bitcoind, get_plugin):  # noqa: F811
 
     assert result["result"] == "OK"
 
-    wait_for(lambda: l1.daemon.is_in_log(r"Feerate not low enough yet: 30000<8000"))
+    wait_for(
+        lambda: l1.daemon.is_in_log(
+            r"Feerate not low enough yet: Current:30000perkb Wanted:<8000perkb"
+        )
+    )
 
     with pytest.raises(RpcError, match=r"Already have a consolidate-below running!"):
         l1.rpc.call("consolidate-below", {"feerate": 31000, "min_utxos": 5})
