@@ -82,7 +82,7 @@ pub async fn consolidate(
 
     if cons_utxos.len() < min_utxos_count {
         return Err(anyhow!(
-            "Not enough UTXO's to consolidate: {}<{}",
+            "Not enough UTXO's to consolidate: Current:{} Wanted:>={}",
             cons_utxos.len(),
             min_utxos_count
         ));
@@ -198,7 +198,7 @@ pub async fn consolidate_below(
                 };
             } else {
                 log::info!(
-                    "Feerate not low enough yet: {}<{}",
+                    "Feerate not low enough yet: Current:{}perkb Wanted:<{}perkb",
                     opening_feerate,
                     feerate
                 );
