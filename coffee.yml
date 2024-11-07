@@ -1,0 +1,9 @@
+plugin:
+  name: consolidator
+  version: 0.1.0
+  lang: rust
+  install: |
+    cargo build --release && cp target/release/consolidator . && cargo clean
+  main: consolidator
+tipping:
+  bolt12: lno1pgxxxmmwwdhkc6tyv96x7usjpdjxz7thv9kxketj8ycpvggrsrhsyz0lrdrv8z3he4q0vy73mt37hfyp4yy5t8tvzs62petwtkxq
