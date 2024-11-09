@@ -58,7 +58,7 @@ Cancel the running background task started by ``consolidate-below``
 * * CONFIRMED
 * * NOT RESERVED
 * * Greater in value than the fee they would cause (using 70 bytes for input size).
-* Consolidator will leave the smallest available UTXO that is greater than CLN's ``min-emergency-msat`` value untouched
+* Consolidator will leave the smallest available UTXO that is greater than CLN's ``min-emergency-msat`` value untouched (this is because the withdraw command used by the plugin would just create an extra UTXO for the emergency reserve again)
 
 # Options
 
