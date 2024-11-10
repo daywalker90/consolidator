@@ -35,6 +35,7 @@ def test_basic(node_factory, bitcoind, get_plugin):  # noqa: F811
     tx = bitcoind.rpc.decoderawtransaction(result["tx"])
     assert float(tx["vout"][0]["value"]) * 100000000 > (420000 - tx["vsize"] * 2) * 0.99
     assert float(tx["vout"][0]["value"]) * 100000000 < (420000 - tx["vsize"] * 2) * 1.01
+    # assert float(tx["vout"][0]["value"]) * 100000000 == 420000 - 2193
 
     bitcoind.generate_block(1, wait_for_mempool=1)
     sync_blockheight(bitcoind, [l1])
@@ -66,7 +67,7 @@ def test_below(node_factory, bitcoind, get_plugin):  # noqa: F811
 
     wait_for(
         lambda: l1.daemon.is_in_log(
-            r"Feerate not low enough yet: Current:30000perkb Wanted:<8000perkb"
+            r"Feerate not low enough yet: Current:44000perkb Wanted:<8000perkb"
         )
     )
 
@@ -77,6 +78,6 @@ def test_below(node_factory, bitcoind, get_plugin):  # noqa: F811
     assert result["result"] == "Canceled"
     wait_for(lambda: l1.daemon.is_in_log(r"consolidate_below CANCELED"))
 
-    result = l1.rpc.call("consolidate-below", {"feerate": 31000, "min_utxos": 5})
+    result = l1.rpc.call("consolidate-below", {"feerate": 44001, "min_utxos": 5})
     assert result["result"] == "OK"
     wait_for(lambda: l1.daemon.is_in_log(r"consolidate_below: SUCCESS:"))

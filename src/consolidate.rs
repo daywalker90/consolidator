@@ -22,7 +22,10 @@ use serde_json::json;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use tokio::{task, time};
 
-use crate::{parse::parse_consolidate_args, PluginState, OPT_CONSOLIDATE_INTERVAL};
+use crate::{
+    parse::{get_blockcount_feerate, parse_consolidate_args},
+    PluginState, OPT_CONSOLIDATE_FEE_MULTI, OPT_CONSOLIDATE_INTERVAL, OPT_FEE_BLOCKCOUNT,
+};
 
 pub async fn consolidate(
     plugin: Plugin<PluginState>,
@@ -60,7 +63,7 @@ pub async fn consolidate(
 
     utxos.sort_by_key(|u| u.amount_msat.msat());
     let mut emerg_utxo_found = false;
-    for utxo in utxos {
+    for utxo in &utxos {
         if utxo.reserved {
             continue;
         }
@@ -104,6 +107,13 @@ pub async fn consolidate(
             satoshi: AmountOrAll::All,
         })
         .await?;
+    // log::debug!(
+    //     "utxos:{:?}, feerate:{}, cons_utxos:{:?}",
+    //     utxos,
+    //     feerate,
+    //     cons_utxos
+    // );
+    // log::debug!("tx:{}", withdraw.tx);
     Ok(json!({"num_utxos_consolidating":cons_utxos.len(),"tx":withdraw.tx,"txid":withdraw.txid}))
 }
 
@@ -172,18 +182,26 @@ pub async fn consolidate_below(
                     continue;
                 }
             };
-            let opening_feerate = if let Some(fro) = feerates.opening {
-                fro
-            } else {
-                log::info!(
-                    "consolidate_below: Feerates perkb object did not contain opening feerate"
-                );
-                continue;
+            let blkcnt6_feerate = match get_blockcount_feerate(&feerates, OPT_FEE_BLOCKCOUNT) {
+                Ok(fr) => fr,
+                Err(e) => {
+                    log::info!("consolidate_below: {}", e);
+                    continue;
+                }
             };
-            if opening_feerate < feerate {
+            if blkcnt6_feerate < feerate {
+                let fee_multi = plugin
+                    .option_str(OPT_CONSOLIDATE_FEE_MULTI)
+                    .unwrap()
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .parse::<f64>()
+                    .unwrap();
                 match consolidate(
                     plugin.clone(),
-                    json!({"feerate":opening_feerate, "min_utxos":min_utxos_count}),
+                    json!({"feerate":((blkcnt6_feerate as f64)*fee_multi).round() as u64,
+                           "min_utxos":min_utxos_count}),
                 )
                 .await
                 {
@@ -199,7 +217,7 @@ pub async fn consolidate_below(
             } else {
                 log::info!(
                     "Feerate not low enough yet: Current:{}perkb Wanted:<{}perkb",
-                    opening_feerate,
+                    blkcnt6_feerate,
                     feerate
                 );
             }

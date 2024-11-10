@@ -47,7 +47,7 @@ Note: Release binaries are built using ``cross`` and the ``optimized`` profile.
 Consolidate UTXO's NOW with the given *feerate* (in perkb). Optionally specify the minimum amount of UTXO's to consolidate with *min_utxos* (Default: 10). Returns a json object with ``num_utxos_consolidating``, ``tx`` and ``txid``
 * ``consolidate-below`` *feerate* [*min_utxos*] 
 
-Spawn a background task to check if CLN's *opening* feerate dropped below the given *feerate* (in perkb) and execute a consolidation once with CLN's *opening* feerate. Optionally specify the minimum amount of UTXO's to consolidate with *min_utxos* (Default: 10). Feerate is checked every ``consolidator-interval`` seconds (Defaults to 3600, aka 1 hour). Returns ``result``:``OK`` if the task was spawned, watch your logs for any problems or status updates
+Spawn a background task to check if CLN's *blockcount:6* feerate dropped below the given *feerate* (in perkb) and execute a consolidation once with CLN's *blockcount:6* feerate. Optionally specify the minimum amount of UTXO's to consolidate with *min_utxos* (Default: 10). Feerate is checked every ``consolidator-interval`` seconds (Defaults to 3600, aka 1 hour). Returns ``result``:``OK`` if the task was spawned, watch your logs for any problems or status updates
 * ``consolidate-cancel`` 
 
 Cancel the running background task started by ``consolidate-below``
@@ -64,3 +64,5 @@ Cancel the running background task started by ``consolidate-below``
 
 * ``consolidator-interval`` *interval_secs*
 * * Interval the background task from ``consolidate-below`` uses to check the feerate. Defaults to 3600 (1 hour)
+* ``consolidator-feemulti``
+* * Fee multiplier used for the feerate of the actual tx of ``consolidate-below``. Is only applied to the actual tx, not during the feerate check. Use this to adjust your time preference of the consolidation tx confirmation.Defaults to ``1.1``

@@ -1,5 +1,8 @@
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Context, Error};
+use cln_plugin::ConfiguredPlugin;
 use cln_rpc::model::responses::FeeratesPerkb;
+
+use crate::{PluginState, OPT_CONSOLIDATE_FEE_MULTI, OPT_CONSOLIDATE_INTERVAL, OPT_FEE_BLOCKCOUNT};
 
 pub fn parse_consolidate_args(
     args: &serde_json::Value,
@@ -13,9 +16,8 @@ pub fn parse_consolidate_args(
             let feerate = if let Some(afr) = fra.first() {
                 u32::try_from(afr.as_u64().ok_or(anyhow!("Not a valid feerate number"))?)?
             } else {
-                feerates.opening.ok_or(anyhow!(
-                    "No feerate provided by user and no feerate provided by CLN"
-                ))?
+                get_blockcount_feerate(feerates, OPT_FEE_BLOCKCOUNT)
+                    .context("No feerate provided by user and no feerate provided by CLN")?
             };
             let min_utxos_count = if let Some(muc) = fra.get(1) {
                 usize::try_from(
@@ -31,9 +33,8 @@ pub fn parse_consolidate_args(
             let feerate = if let Some(ofr) = fro.get("feerate") {
                 u32::try_from(ofr.as_u64().ok_or(anyhow!("Not a valid feerate number"))?)?
             } else {
-                feerates.opening.ok_or(anyhow!(
-                    "No feerate provided by user and no feerate provided by CLN"
-                ))?
+                get_blockcount_feerate(feerates, OPT_FEE_BLOCKCOUNT)
+                    .context("No feerate provided by user and no feerate provided by CLN")?
             };
             let min_utxos_count = if let Some(muc) = fro.get("min_utxos") {
                 usize::try_from(
@@ -64,4 +65,58 @@ pub fn parse_consolidate_args(
     }
 
     Ok((feerate, min_utxos_count))
+}
+
+pub fn check_options(
+    plugin: &ConfiguredPlugin<PluginState, tokio::io::Stdin, tokio::io::Stdout>,
+) -> Result<(), Error> {
+    let fee_multi = plugin
+        .option_str(OPT_CONSOLIDATE_FEE_MULTI)
+        .unwrap()
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .parse::<f64>()
+        .context("Could not parse fee_multi as a decimal")?;
+    if !(0.3..=3.0).contains(&fee_multi) {
+        return Err(anyhow!(
+            "{} outside of allowed range [0.3,3.0]",
+            OPT_CONSOLIDATE_FEE_MULTI
+        ));
+    }
+    let interval = plugin
+        .option_str(OPT_CONSOLIDATE_INTERVAL)
+        .unwrap()
+        .unwrap()
+        .as_i64()
+        .ok_or(anyhow!("Could not parse interval as a number"))?;
+    if interval < 1 {
+        return Err(anyhow!(
+            "{} outside of valid range [1,{}]",
+            OPT_CONSOLIDATE_INTERVAL,
+            u64::MAX
+        ));
+    }
+    Ok(())
+}
+
+pub fn get_blockcount_feerate(feerates: &FeeratesPerkb, blockcount: u32) -> Result<u32, Error> {
+    let estimates = if let Some(est) = &feerates.estimates {
+        est
+    } else {
+        return Err(anyhow!(
+            "Feerates perkb object did not contain the estimates object"
+        ));
+    };
+    for estimate in estimates {
+        if estimate.blockcount == blockcount {
+            return Ok(estimate.feerate);
+        }
+    }
+
+    Err(anyhow!(
+        "Feerates perkb object did not contain \
+        blockcount:{} feerate",
+        blockcount
+    ))
 }
