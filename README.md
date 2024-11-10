@@ -65,4 +65,4 @@ Cancel the running background task started by ``consolidate-below``
 * ``consolidator-interval`` *interval_secs*
 * * Interval the background task from ``consolidate-below`` uses to check the feerate. Defaults to 3600 (1 hour)
 * ``consolidator-feemulti``
-* * Fee multiplier used for the feerate of the actual tx of ``consolidate-below``. Is only applied to the actual tx, not during the feerate check. Use this to adjust your time preference of the consolidation tx confirmation.Defaults to ``1.1``
+* * Fee multiplier used for the feerate of the actual tx of ``consolidate-below``. Is only applied to the actual tx, not during the feerate check. Use this to adjust your time preference of the consolidation tx confirmation. Keep in mind that CLN likes to naturally overshoot the actual feerate a little. Defaults to ``1.1``
