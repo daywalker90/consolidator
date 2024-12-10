@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] 2024-12-10
+
+### Changed
+
+- upgrade dependencies
+
 ## [0.2.0] 2024-11-10
 
 ### Changed
