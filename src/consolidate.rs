@@ -135,12 +135,7 @@ pub async fn consolidate_below(
     }
 
     task::spawn(async move {
-        let interval = plugin
-            .option_str(OPT_CONSOLIDATE_INTERVAL)
-            .unwrap()
-            .unwrap()
-            .as_i64()
-            .unwrap() as u64;
+        let interval = plugin.option(&OPT_CONSOLIDATE_INTERVAL).unwrap() as u64;
         let cancel_rx = plugin.state().consolidate_cancel.subscribe();
         plugin.state().consolidate_cancel.send(false).unwrap();
         let mut now = Instant::now();
@@ -191,10 +186,7 @@ pub async fn consolidate_below(
             };
             if blkcnt6_feerate < feerate {
                 let fee_multi = plugin
-                    .option_str(OPT_CONSOLIDATE_FEE_MULTI)
-                    .unwrap()
-                    .unwrap()
-                    .as_str()
+                    .option(&OPT_CONSOLIDATE_FEE_MULTI)
                     .unwrap()
                     .parse::<f64>()
                     .unwrap();

@@ -71,29 +71,21 @@ pub fn check_options(
     plugin: &ConfiguredPlugin<PluginState, tokio::io::Stdin, tokio::io::Stdout>,
 ) -> Result<(), Error> {
     let fee_multi = plugin
-        .option_str(OPT_CONSOLIDATE_FEE_MULTI)
-        .unwrap()
-        .unwrap()
-        .as_str()
+        .option(&OPT_CONSOLIDATE_FEE_MULTI)
         .unwrap()
         .parse::<f64>()
         .context("Could not parse fee_multi as a decimal")?;
     if !(0.3..=3.0).contains(&fee_multi) {
         return Err(anyhow!(
             "{} outside of allowed range [0.3,3.0]",
-            OPT_CONSOLIDATE_FEE_MULTI
+            OPT_CONSOLIDATE_FEE_MULTI.name()
         ));
     }
-    let interval = plugin
-        .option_str(OPT_CONSOLIDATE_INTERVAL)
-        .unwrap()
-        .unwrap()
-        .as_i64()
-        .ok_or(anyhow!("Could not parse interval as a number"))?;
+    let interval = plugin.option(&OPT_CONSOLIDATE_INTERVAL).unwrap();
     if interval < 1 {
         return Err(anyhow!(
             "{} outside of valid range [1,{}]",
-            OPT_CONSOLIDATE_INTERVAL,
+            OPT_CONSOLIDATE_INTERVAL.name(),
             u64::MAX
         ));
     }

@@ -12,26 +12,23 @@ use tokio::sync::watch::{channel, Sender};
 mod consolidate;
 mod parse;
 
-const OPT_CONSOLIDATE_INTERVAL: &str = "consolidator-interval";
-const OPT_CONSOLIDATE_FEE_MULTI: &str = "consolidator-feemulti";
+const OPT_CONSOLIDATE_INTERVAL: DefaultIntegerConfigOption = ConfigOption::new_i64_with_default(
+    "consolidator-interval",
+    3600,
+    "Interval for trying to consolidate with consolidate-below, defaults to 3600s",
+);
+const OPT_CONSOLIDATE_FEE_MULTI: DefaultStringConfigOption = ConfigOption::new_str_with_default(
+    "consolidator-feemulti",
+    "1.1",
+    "Fee multiplier applied to the actual consolidation tx, \
+    after the check in consolidate-below was met without the multiplier",
+);
 const OPT_FEE_BLOCKCOUNT: u32 = 6;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), anyhow::Error> {
     std::env::set_var("CLN_PLUGIN_LOG", "cln_plugin=info,cln_rpc=info,debug");
     log_panics::init();
-
-    let opt_consolidate_interval: DefaultIntegerConfigOption = ConfigOption::new_i64_with_default(
-        OPT_CONSOLIDATE_INTERVAL,
-        3600,
-        "Interval for trying to consolidate with consolidate-below, defaults to 3600s",
-    );
-    let opt_consolidate_fee_multi: DefaultStringConfigOption = ConfigOption::new_str_with_default(
-        OPT_CONSOLIDATE_FEE_MULTI,
-        "1.1",
-        "Fee multiplier applied to the actual consolidation tx, \
-        after the check in consolidate-below was met without the multiplier",
-    );
 
     let confplugin = match Builder::new(tokio::io::stdin(), tokio::io::stdout())
         .rpcmethod(
@@ -49,8 +46,8 @@ async fn main() -> Result<(), anyhow::Error> {
             "Cancel the current consolidate-below task",
             consolidate_cancel,
         )
-        .option(opt_consolidate_interval)
-        .option(opt_consolidate_fee_multi)
+        .option(OPT_CONSOLIDATE_INTERVAL)
+        .option(OPT_CONSOLIDATE_FEE_MULTI)
         .dynamic()
         .configure()
         .await?
