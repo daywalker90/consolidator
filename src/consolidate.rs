@@ -9,7 +9,8 @@ use cln_plugin::Plugin;
 use cln_rpc::{
     model::{
         requests::{
-            FeeratesRequest, FeeratesStyle, ListfundsRequest, NewaddrAddresstype, NewaddrRequest,
+            DatastoreMode, DatastoreRequest, DeldatastoreRequest, FeeratesRequest, FeeratesStyle,
+            ListdatastoreRequest, ListfundsRequest, NewaddrAddresstype, NewaddrRequest,
             WithdrawRequest,
         },
         responses::ListfundsOutputsStatus,
@@ -24,7 +25,8 @@ use tokio::{task, time};
 
 use crate::{
     parse::{get_blockcount_feerate, parse_consolidate_args},
-    PluginState, OPT_CONSOLIDATE_FEE_MULTI, OPT_CONSOLIDATE_INTERVAL, OPT_FEE_BLOCKCOUNT,
+    PluginState, OPT_CONSOLIDATE_FEE_MULTI, OPT_CONSOLIDATE_INTERVAL, OPT_CONSOLIDATE_PERSIST,
+    OPT_FEE_BLOCKCOUNT,
 };
 
 pub async fn consolidate(
@@ -134,6 +136,10 @@ pub async fn consolidate_below(
         *is_running = true;
     }
 
+    if plugin.option(&OPT_CONSOLIDATE_PERSIST).unwrap() {
+        save_consolidate(&mut rpc, args.clone()).await?;
+    }
+
     task::spawn(async move {
         let interval = plugin.option(&OPT_CONSOLIDATE_INTERVAL).unwrap() as u64;
         let cancel_rx = plugin.state().consolidate_cancel.subscribe();
@@ -144,6 +150,7 @@ pub async fn consolidate_below(
             if *cancel_rx.borrow() {
                 log::info!("consolidate_below CANCELED");
                 *plugin.state().consolidate_lock.lock().unwrap() = false;
+                _ = del_consolidate(&mut rpc).await;
                 break;
             }
             if !first_run && now.elapsed().as_secs() < interval {
@@ -200,6 +207,7 @@ pub async fn consolidate_below(
                     Ok(o) => {
                         log::info!("consolidate_below: SUCCESS: {}", o);
                         *plugin.state().consolidate_lock.lock().unwrap() = false;
+                        _ = del_consolidate(&mut rpc).await;
                         break;
                     }
                     Err(e) => {
@@ -225,4 +233,44 @@ pub async fn consolidate_cancel(
 ) -> Result<serde_json::Value, anyhow::Error> {
     plugin.state().consolidate_cancel.send(true)?;
     Ok(json!({"result":"Canceled"}))
+}
+
+async fn save_consolidate(rpc: &mut ClnRpc, args: serde_json::Value) -> Result<(), anyhow::Error> {
+    rpc.call_typed(&DatastoreRequest {
+        generation: None,
+        hex: None,
+        mode: Some(DatastoreMode::CREATE_OR_REPLACE),
+        string: Some(args.to_string()),
+        key: vec!["consolidator".to_owned(), "consolidate-below".to_owned()],
+    })
+    .await?;
+    Ok(())
+}
+
+async fn del_consolidate(rpc: &mut ClnRpc) -> Result<(), anyhow::Error> {
+    rpc.call_typed(&DeldatastoreRequest {
+        generation: None,
+        key: vec!["consolidator".to_owned(), "consolidate-below".to_owned()],
+    })
+    .await?;
+    Ok(())
+}
+
+pub async fn load_consolidate(rpc: &mut ClnRpc) -> Result<serde_json::Value, anyhow::Error> {
+    let result = rpc
+        .call_typed(&ListdatastoreRequest {
+            key: Some(vec![
+                "consolidator".to_owned(),
+                "consolidate-below".to_owned(),
+            ]),
+        })
+        .await?;
+    let str_stored = result
+        .datastore
+        .first()
+        .ok_or_else(|| anyhow!("No consolidate job found"))?
+        .string
+        .clone()
+        .ok_or_else(|| anyhow!("No consolidate arguments found in db"))?;
+    serde_json::from_str(&str_stored).map_err(|e| anyhow!(e))
 }

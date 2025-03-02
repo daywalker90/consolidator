@@ -1,11 +1,18 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::anyhow;
 use cln_plugin::{
-    options::{ConfigOption, DefaultIntegerConfigOption, DefaultStringConfigOption},
+    options::{
+        ConfigOption, DefaultBooleanConfigOption, DefaultIntegerConfigOption,
+        DefaultStringConfigOption,
+    },
     Builder,
 };
-use consolidate::{consolidate, consolidate_below, consolidate_cancel};
+use cln_rpc::ClnRpc;
+use consolidate::{consolidate, consolidate_below, consolidate_cancel, load_consolidate};
 use parse::check_options;
 use tokio::sync::watch::{channel, Sender};
 
@@ -22,6 +29,11 @@ const OPT_CONSOLIDATE_FEE_MULTI: DefaultStringConfigOption = ConfigOption::new_s
     "1.1",
     "Fee multiplier applied to the actual consolidation tx, \
     after the check in consolidate-below was met without the multiplier",
+);
+const OPT_CONSOLIDATE_PERSIST: DefaultBooleanConfigOption = ConfigOption::new_bool_with_default(
+    "consolidator-persist",
+    false,
+    "If a `consolidate-below` should be persistent betweend plugin/node restarts.",
 );
 const OPT_FEE_BLOCKCOUNT: u32 = 6;
 
@@ -48,6 +60,7 @@ async fn main() -> Result<(), anyhow::Error> {
         )
         .option(OPT_CONSOLIDATE_INTERVAL)
         .option(OPT_CONSOLIDATE_FEE_MULTI)
+        .option(OPT_CONSOLIDATE_PERSIST)
         .dynamic()
         .configure()
         .await?
@@ -67,6 +80,24 @@ async fn main() -> Result<(), anyhow::Error> {
         consolidate_cancel: Arc::new(channel(false).0),
     };
     if let Ok(plugin) = confplugin.start(state).await {
+        if plugin.option(&OPT_CONSOLIDATE_PERSIST).unwrap() {
+            let mut rpc = ClnRpc::new(
+                Path::new(&plugin.configuration().lightning_dir)
+                    .join(&plugin.configuration().rpc_file),
+            )
+            .await?;
+            match load_consolidate(&mut rpc).await {
+                Ok(args) => match consolidate_below(plugin.clone(), args.clone()).await {
+                    Ok(_co) => log::info!(
+                        "Successfully started saved consolidate-below command with: {}.",
+                        args
+                    ),
+                    Err(ce) => log::info!("Error starting saved consolidate-below command: {}", ce),
+                },
+                Err(e) => log::info!("Loading persisted consolidate command: {}", e),
+            };
+        }
+
         plugin.join().await
     } else {
         Err(anyhow!("Error starting the plugin!"))

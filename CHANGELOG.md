@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.2] Unreleased
+
+### Added
+
+- option `consolidator-persist` with default `False`, you can turn this on for `consolidate-below` to be persistent between plugin/node restarts
+
 ## [0.2.1] 2024-12-10
 
 ### Changed
