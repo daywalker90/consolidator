@@ -151,7 +151,7 @@ def test_persist(node_factory, bitcoind, get_plugin):  # noqa: F811
         lambda: l1.daemon.is_in_log(
             (
                 r"Successfully started saved consolidate-below command with: "
-                r'{\\"feerate\\":8000,\\"min_utxos\\":5}'
+                r'{.*"feerate.*":8000,.*"min_utxos.*":5}'
             )
         )
     )
