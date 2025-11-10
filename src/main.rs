@@ -6,7 +6,9 @@ use std::{
 use anyhow::anyhow;
 use cln_plugin::{
     options::{
-        ConfigOption, DefaultBooleanConfigOption, DefaultIntegerConfigOption,
+        ConfigOption,
+        DefaultBooleanConfigOption,
+        DefaultIntegerConfigOption,
         DefaultStringConfigOption,
     },
     Builder,

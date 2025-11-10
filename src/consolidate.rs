@@ -5,12 +5,20 @@ use std::{
 };
 
 use anyhow::anyhow;
+use bitcoin::hashes::sha256::Hash as Sha256;
 use cln_plugin::Plugin;
 use cln_rpc::{
     model::{
         requests::{
-            DatastoreMode, DatastoreRequest, DeldatastoreRequest, FeeratesRequest, FeeratesStyle,
-            ListdatastoreRequest, ListfundsRequest, NewaddrAddresstype, NewaddrRequest,
+            DatastoreMode,
+            DatastoreRequest,
+            DeldatastoreRequest,
+            FeeratesRequest,
+            FeeratesStyle,
+            ListdatastoreRequest,
+            ListfundsRequest,
+            NewaddrAddresstype,
+            NewaddrRequest,
             WithdrawRequest,
         },
         responses::ListfundsOutputsStatus,
@@ -19,13 +27,14 @@ use cln_rpc::{
     ClnRpc,
 };
 use serde_json::json;
-
-use bitcoin::hashes::sha256::Hash as Sha256;
 use tokio::{task, time};
 
 use crate::{
     parse::{get_blockcount_feerate, parse_consolidate_args},
-    PluginState, OPT_CONSOLIDATE_FEE_MULTI, OPT_CONSOLIDATE_INTERVAL, OPT_CONSOLIDATE_PERSIST,
+    PluginState,
+    OPT_CONSOLIDATE_FEE_MULTI,
+    OPT_CONSOLIDATE_INTERVAL,
+    OPT_CONSOLIDATE_PERSIST,
     OPT_FEE_BLOCKCOUNT,
 };
 
