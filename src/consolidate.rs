@@ -85,7 +85,7 @@ pub async fn consolidate(
             emerg_utxo_found = true;
             continue;
         }
-        if 70 * (feerate as u64) > utxo.amount_msat.msat() {
+        if 70 * u64::from(feerate) > utxo.amount_msat.msat() {
             continue;
         }
         cons_utxos.push(Outpoint {
@@ -150,7 +150,7 @@ pub async fn consolidate_below(
     }
 
     task::spawn(async move {
-        let interval = plugin.option(&OPT_CONSOLIDATE_INTERVAL).unwrap() as u64;
+        let interval = u64::try_from(plugin.option(&OPT_CONSOLIDATE_INTERVAL).unwrap()).unwrap();
         let cancel_rx = plugin.state().consolidate_cancel.subscribe();
         plugin.state().consolidate_cancel.send(false).unwrap();
         let mut now = Instant::now();
@@ -165,38 +165,34 @@ pub async fn consolidate_below(
             if !first_run && now.elapsed().as_secs() < interval {
                 time::sleep(Duration::from_millis(200)).await;
                 continue;
-            } else {
-                now = Instant::now();
-                first_run = false;
             }
-            let feerates_resp = if let Ok(o) = rpc
+            now = Instant::now();
+            first_run = false;
+
+            let Ok(feerates_resp) = rpc
                 .call_typed(&FeeratesRequest {
                     style: FeeratesStyle::PERKB,
                 })
                 .await
-            {
-                o
-            } else {
+            else {
                 log::info!("consolidate_below: Could not get feerates");
                 continue;
             };
-            let feerates = if let Some(frr) = feerates_resp.perkb {
-                frr
-            } else {
+            let Some(feerates) = feerates_resp.perkb else {
                 log::info!("consolidate_below: Feerates did not return perkb object");
                 continue;
             };
             let (feerate, min_utxos_count) = match parse_consolidate_args(&args, &feerates) {
                 Ok((f, c)) => (f, c),
                 Err(e) => {
-                    log::info!("consolidate_below: {}", e);
+                    log::info!("consolidate_below: {e}");
                     continue;
                 }
             };
             let blkcnt6_feerate = match get_blockcount_feerate(&feerates, OPT_FEE_BLOCKCOUNT) {
                 Ok(fr) => fr,
                 Err(e) => {
-                    log::info!("consolidate_below: {}", e);
+                    log::info!("consolidate_below: {e}");
                     continue;
                 }
             };
@@ -208,26 +204,25 @@ pub async fn consolidate_below(
                     .unwrap();
                 match consolidate(
                     plugin.clone(),
-                    json!({"feerate":((blkcnt6_feerate as f64)*fee_multi).round() as u64,
+                    json!({"feerate":(f64::from(blkcnt6_feerate)*fee_multi).round().trunc(),
                            "min_utxos":min_utxos_count}),
                 )
                 .await
                 {
                     Ok(o) => {
-                        log::info!("consolidate_below: SUCCESS: {}", o);
+                        log::info!("consolidate_below: SUCCESS: {o}");
                         *plugin.state().consolidate_lock.lock().unwrap() = false;
                         _ = del_consolidate(&mut rpc).await;
                         break;
                     }
                     Err(e) => {
-                        log::info!("consolidate_below: {}", e)
+                        log::info!("consolidate_below: {e}");
                     }
-                };
+                }
             } else {
                 log::info!(
-                    "Feerate not low enough yet: Current:{}perkb Wanted:<{}perkb",
-                    blkcnt6_feerate,
-                    feerate
+                    "Feerate not low enough yet: \
+                    Current:{blkcnt6_feerate}perkb Wanted:<{feerate}perkb"
                 );
             }
         }

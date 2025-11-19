@@ -71,9 +71,8 @@ async fn main() -> Result<(), anyhow::Error> {
             if let Err(e) = check_options(&plugin) {
                 plugin.disable(&e.to_string()).await?;
                 return Ok(());
-            } else {
-                plugin
             }
+            plugin
         }
         None => return Err(anyhow!("Error configuring the plugin!")),
     };
@@ -91,12 +90,11 @@ async fn main() -> Result<(), anyhow::Error> {
             match load_consolidate(&mut rpc).await {
                 Ok(args) => match consolidate_below(plugin.clone(), args.clone()).await {
                     Ok(_co) => log::info!(
-                        "Successfully started saved consolidate-below command with: {}.",
-                        args
+                        "Successfully started saved consolidate-below command with: {args}."
                     ),
-                    Err(ce) => log::info!("Error starting saved consolidate-below command: {}", ce),
+                    Err(ce) => log::info!("Error starting saved consolidate-below command: {ce}"),
                 },
-                Err(e) => log::info!("Loading persisted consolidate command: {}", e),
+                Err(e) => log::info!("Loading persisted consolidate command: {e}"),
             };
         }
 
