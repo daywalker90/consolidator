@@ -204,7 +204,7 @@ pub async fn consolidate_below(
                     .unwrap();
                 match consolidate(
                     plugin.clone(),
-                    json!({"feerate":(f64::from(blkcnt6_feerate)*fee_multi).round().trunc(),
+                    json!({"feerate":(f64::from(blkcnt6_feerate)*fee_multi).round() as u64,
                            "min_utxos":min_utxos_count}),
                 )
                 .await
