@@ -6,9 +6,9 @@ import pytest
 from pathlib import Path
 
 RUST_PROFILE = os.environ.get("RUST_PROFILE", "debug")
-COMPILED_PATH = Path.cwd() / "target" / RUST_PROFILE / \
-    "consolidator"
-DOWNLOAD_PATH = Path.cwd() / "tests" / "consolidator"
+plugin_dir = Path(__file__).parent.parent.resolve()
+COMPILED_PATH = plugin_dir / "target" / RUST_PROFILE / "consolidator"
+DOWNLOAD_PATH = plugin_dir / "tests" / "consolidator"
 
 
 @pytest.fixture
