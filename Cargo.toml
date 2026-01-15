@@ -2,7 +2,7 @@
 name = "consolidator"
 version = "0.2.2"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.85.0"
 
 [dependencies]
 anyhow = "1.0"
