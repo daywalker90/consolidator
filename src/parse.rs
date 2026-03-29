@@ -93,12 +93,7 @@ pub fn check_options(
 }
 
 pub fn get_blockcount_feerate(feerates: &FeeratesPerkb, blockcount: u32) -> Result<u32, Error> {
-    let Some(estimates) = &feerates.estimates else {
-        return Err(anyhow!(
-            "Feerates perkb object did not contain the estimates object"
-        ));
-    };
-    for estimate in estimates {
+    for estimate in &feerates.estimates {
         if estimate.blockcount == blockcount {
             return Ok(estimate.feerate);
         }

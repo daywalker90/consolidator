@@ -8,6 +8,7 @@ use anyhow::anyhow;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use cln_plugin::Plugin;
 use cln_rpc::{
+    ClnRpc,
     model::{
         requests::{
             DatastoreMode,
@@ -24,18 +25,17 @@ use cln_rpc::{
         responses::ListfundsOutputsStatus,
     },
     primitives::{AmountOrAll, Feerate, Outpoint},
-    ClnRpc,
 };
 use serde_json::json;
 use tokio::{task, time};
 
 use crate::{
-    parse::{get_blockcount_feerate, parse_consolidate_args},
-    PluginState,
     OPT_CONSOLIDATE_FEE_MULTI,
     OPT_CONSOLIDATE_INTERVAL,
     OPT_CONSOLIDATE_PERSIST,
     OPT_FEE_BLOCKCOUNT,
+    PluginState,
+    parse::{get_blockcount_feerate, parse_consolidate_args},
 };
 
 pub async fn consolidate(
@@ -202,6 +202,9 @@ pub async fn consolidate_below(
                     .unwrap()
                     .parse::<f64>()
                     .unwrap();
+
+                #[allow(clippy::cast_possible_truncation)]
+                #[allow(clippy::cast_sign_loss)]
                 match consolidate(
                     plugin.clone(),
                     json!({"feerate":(f64::from(blkcnt6_feerate)*fee_multi).round() as u64,

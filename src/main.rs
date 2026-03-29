@@ -5,18 +5,18 @@ use std::{
 
 use anyhow::anyhow;
 use cln_plugin::{
+    Builder,
     options::{
         ConfigOption,
         DefaultBooleanConfigOption,
         DefaultIntegerConfigOption,
         DefaultStringConfigOption,
     },
-    Builder,
 };
 use cln_rpc::ClnRpc;
 use consolidate::{consolidate, consolidate_below, consolidate_cancel, load_consolidate};
 use parse::check_options;
-use tokio::sync::watch::{channel, Sender};
+use tokio::sync::watch::{Sender, channel};
 
 mod consolidate;
 mod parse;
@@ -41,7 +41,7 @@ const OPT_FEE_BLOCKCOUNT: u32 = 6;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), anyhow::Error> {
-    std::env::set_var("CLN_PLUGIN_LOG", "cln_plugin=info,cln_rpc=info,debug");
+    unsafe { std::env::set_var("CLN_PLUGIN_LOG", "cln_plugin=info,cln_rpc=info,debug") };
     log_panics::init();
 
     let confplugin = match Builder::new(tokio::io::stdin(), tokio::io::stdout())
@@ -80,27 +80,30 @@ async fn main() -> Result<(), anyhow::Error> {
         consolidate_lock: Arc::new(Mutex::new(false)),
         consolidate_cancel: Arc::new(channel(false).0),
     };
-    if let Ok(plugin) = confplugin.start(state).await {
-        if plugin.option(&OPT_CONSOLIDATE_PERSIST).unwrap() {
-            let mut rpc = ClnRpc::new(
-                Path::new(&plugin.configuration().lightning_dir)
-                    .join(&plugin.configuration().rpc_file),
-            )
-            .await?;
-            match load_consolidate(&mut rpc).await {
-                Ok(args) => match consolidate_below(plugin.clone(), args.clone()).await {
-                    Ok(_co) => log::info!(
-                        "Successfully started saved consolidate-below command with: {args}."
-                    ),
-                    Err(ce) => log::info!("Error starting saved consolidate-below command: {ce}"),
-                },
-                Err(e) => log::info!("Loading persisted consolidate command: {e}"),
-            };
-        }
+    match confplugin.start(state).await {
+        Ok(plugin) => {
+            if plugin.option(&OPT_CONSOLIDATE_PERSIST).unwrap() {
+                let mut rpc = ClnRpc::new(
+                    Path::new(&plugin.configuration().lightning_dir)
+                        .join(&plugin.configuration().rpc_file),
+                )
+                .await?;
+                match load_consolidate(&mut rpc).await {
+                    Ok(args) => match consolidate_below(plugin.clone(), args.clone()).await {
+                        Ok(_co) => log::info!(
+                            "Successfully started saved consolidate-below command with: {args}."
+                        ),
+                        Err(ce) => {
+                            log::info!("Error starting saved consolidate-below command: {ce}");
+                        }
+                    },
+                    Err(e) => log::info!("Loading persisted consolidate command: {e}"),
+                }
+            }
 
-        plugin.join().await
-    } else {
-        Err(anyhow!("Error starting the plugin!"))
+            plugin.join().await
+        }
+        _ => Err(anyhow!("Error starting the plugin!")),
     }
 }
 
