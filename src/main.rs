@@ -6,6 +6,7 @@ use std::{
 use anyhow::anyhow;
 use cln_plugin::{
     Builder,
+    RpcMethodBuilder,
     options::{
         ConfigOption,
         DefaultBooleanConfigOption,
@@ -45,15 +46,15 @@ async fn main() -> Result<(), anyhow::Error> {
     log_panics::init();
 
     let confplugin = match Builder::new(tokio::io::stdin(), tokio::io::stdout())
-        .rpcmethod(
-            "consolidate",
-            "Consolidate UTXO's with given feerate now",
-            consolidate,
+        .rpcmethod_from_builder(
+            RpcMethodBuilder::new("consolidate", consolidate)
+                .description("Consolidate UTXO's with given feerate (in perkb) now")
+                .usage("feerate [min_utxos]"),
         )
-        .rpcmethod(
-            "consolidate-below",
-            "Wait for feerate to drop below given rate and consolidate then",
-            consolidate_below,
+        .rpcmethod_from_builder(
+            RpcMethodBuilder::new("consolidate-below", consolidate_below)
+                .description("Wait for feerate to drop below given rate and consolidate then")
+                .usage("feerate [min_utxos]"),
         )
         .rpcmethod(
             "consolidate-cancel",

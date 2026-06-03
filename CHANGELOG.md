@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- usage info for rpc commands when using CLN's `help`
+
+### Changed
+- updated `cln-rpc` and `cln-plugin` to v0.7
+
 ## [0.2.3] 2026-03-29
 
 ### Changed
