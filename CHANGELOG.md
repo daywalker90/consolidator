@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.2.4] 2026-06-07
 
 ### Added
 - usage info for rpc commands when using CLN's `help`
