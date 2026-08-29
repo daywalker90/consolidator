@@ -82,11 +82,11 @@ Install a recent rust version ([rustup](https://rustup.rs/) is recommended) and 
 
 After that the binary will be here: ``target/release/consolidator``
 
-Note: Release binaries are built using ``cross`` and the ``optimized`` profile.
+Note: Release binaries are built using the ``optimized`` profile.
 
 # Command documentation
 
-:warning: All feerates used in this plugin are *perkb* aka (sat/vbyte)*1000
+:warning: All feerates used in this plugin are *perkb* aka `(sat/vbyte)*1000`
 
 * ``consolidate`` *feerate* [*min_utxos*] 
 
