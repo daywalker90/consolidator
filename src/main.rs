@@ -17,7 +17,7 @@ use cln_plugin::{
 use cln_rpc::ClnRpc;
 use consolidate::{consolidate, consolidate_below, consolidate_cancel, load_consolidate};
 use parse::check_options;
-use tokio::sync::watch::{Sender, channel};
+use tokio::sync::watch::{Receiver, Sender, channel};
 
 mod consolidate;
 mod parse;
@@ -77,9 +77,11 @@ async fn main() -> Result<(), anyhow::Error> {
         }
         None => return Err(anyhow!("Error configuring the plugin!")),
     };
+    let (consolidate_cancel_tx, consolidate_cancel_rx) = channel(false);
     let state = PluginState {
         consolidate_lock: Arc::new(Mutex::new(false)),
-        consolidate_cancel: Arc::new(channel(false).0),
+        consolidate_cancel: Arc::new(consolidate_cancel_tx),
+        _consolidate_cancel_rx: Arc::new(consolidate_cancel_rx),
     };
     match confplugin.start(state).await {
         Ok(plugin) => {
@@ -112,4 +114,7 @@ async fn main() -> Result<(), anyhow::Error> {
 pub struct PluginState {
     consolidate_lock: Arc<Mutex<bool>>,
     consolidate_cancel: Arc<Sender<bool>>,
+    // Keeps a receiver alive so that `consolidate_cancel` never sends into
+    // a channel with no receivers when no task is running.
+    _consolidate_cancel_rx: Arc<Receiver<bool>>,
 }
