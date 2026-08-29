@@ -161,8 +161,8 @@ pub async fn consolidate_below(
         loop {
             if *cancel_rx.borrow() {
                 log::info!("consolidate_below CANCELED");
-                *plugin.state().consolidate_lock.lock().unwrap() = false;
                 _ = del_consolidate(&mut rpc).await;
+                *plugin.state().consolidate_lock.lock().unwrap() = false;
                 break;
             }
             if !first_run && now.elapsed().as_secs() < interval {
@@ -217,8 +217,8 @@ pub async fn consolidate_below(
                 {
                     Ok(o) => {
                         log::info!("consolidate_below: SUCCESS: {o}");
-                        *plugin.state().consolidate_lock.lock().unwrap() = false;
                         _ = del_consolidate(&mut rpc).await;
+                        *plugin.state().consolidate_lock.lock().unwrap() = false;
                         break;
                     }
                     Err(e) => {
