@@ -146,7 +146,10 @@ pub async fn consolidate_below(
     }
 
     if plugin.option(&OPT_CONSOLIDATE_PERSIST).unwrap() {
-        save_consolidate(&mut rpc, args.clone()).await?;
+        if let Err(e) = save_consolidate(&mut rpc, args.clone()).await {
+            *plugin.state().consolidate_lock.lock().unwrap() = false;
+            return Err(e);
+        }
     }
 
     task::spawn(async move {
