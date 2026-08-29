@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.5] 2026-08-29
+
+### Fixed
+- `consolidate-cancel` no longer returns an error when no `consolidate-below` task is running. It now always returns `{"result":"Canceled"}`
+- A direct `consolidate` is now refused while a `consolidate-below` task is running. It returns `Already have a consolidate-below running!`. Before, both commands could use the same UTXO's and one of them failed
+- If persisting the job to the datastore fails, `consolidate-below` no longer stays in the "already running" state
+- When a finished task removes its datastore entry, it no longer removes the entry of a new `consolidate-below` job
+
 ## [0.2.4] 2026-06-07
 
 ### Added
