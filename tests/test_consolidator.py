@@ -199,3 +199,66 @@ def test_persist(node_factory, bitcoind, get_plugin):  # noqa: F811
             r"Feerate not low enough yet: Current:44000perkb Wanted:<8000perkb"
         )
     )
+
+
+def test_cancel_without_task(node_factory, get_plugin):  # noqa: F811
+    """consolidate-cancel must be an idempotent no-op, even with no task running."""
+    l1 = node_factory.get_node(
+        options={"plugin": get_plugin, "log-level": "debug", "consolidator-interval": 2}
+    )
+    l1.fundwallet(100_000)
+    l1.fundwallet(100_000)
+    l1.fundwallet(20_000)
+    l1.fundwallet(50_000)
+    l1.fundwallet(590)
+    l1.fundwallet(100_000)
+    l1.fundwallet(100_000)
+
+    # No task was ever started: this used to return a transport error.
+    result = l1.rpc.call("consolidate-cancel", {})
+    assert result["result"] == "Canceled"
+
+    # After a task ran and was canceled, canceling again is also a no-op.
+    l1.rpc.call("consolidate-below", {"feerate": 8000, "min_utxos": 5})
+    wait_for(
+        lambda: l1.daemon.is_in_log(
+            r"Feerate not low enough yet: Current:44000perkb Wanted:<8000perkb"
+        )
+    )
+    result = l1.rpc.call("consolidate-cancel", {})
+    assert result["result"] == "Canceled"
+    wait_for(lambda: l1.daemon.is_in_log(r"consolidate_below CANCELED"))
+    result = l1.rpc.call("consolidate-cancel", {})
+    assert result["result"] == "Canceled"
+
+
+def test_consolidate_blocks_during_below(node_factory, get_plugin):  # noqa: F811
+    """A direct consolidate must be refused while consolidate-below runs."""
+    l1 = node_factory.get_node(
+        options={"plugin": get_plugin, "log-level": "debug", "consolidator-interval": 2}
+    )
+    l1.fundwallet(100_000)
+    l1.fundwallet(100_000)
+    l1.fundwallet(20_000)
+    l1.fundwallet(50_000)
+    l1.fundwallet(590)
+    l1.fundwallet(100_000)
+    l1.fundwallet(100_000)
+
+    l1.rpc.call("consolidate-below", {"feerate": 8000, "min_utxos": 5})
+    wait_for(
+        lambda: l1.daemon.is_in_log(
+            r"Feerate not low enough yet: Current:44000perkb Wanted:<8000perkb"
+        )
+    )
+
+    # consolidate-below holds the lock, so a direct consolidate must refuse.
+    with pytest.raises(RpcError, match=r"Already have a consolidate-below running!"):
+        l1.rpc.call("consolidate", {"feerate": 8500, "min_utxos": 5})
+
+    # After cancel, the lock is released and a direct consolidate works again.
+    result = l1.rpc.call("consolidate-cancel", {})
+    assert result["result"] == "Canceled"
+    wait_for(lambda: l1.daemon.is_in_log(r"consolidate_below CANCELED"))
+    result = l1.rpc.call("consolidate", {"feerate": 8500, "min_utxos": 5})
+    assert result["num_utxos_consolidating"] == 5
