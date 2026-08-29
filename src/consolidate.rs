@@ -42,6 +42,24 @@ pub async fn consolidate(
     plugin: Plugin<PluginState>,
     args: serde_json::Value,
 ) -> Result<serde_json::Value, anyhow::Error> {
+    {
+        let mut is_running = plugin.state().consolidate_lock.lock().unwrap();
+        if *is_running {
+            return Err(anyhow!("Already have a consolidate-below running!"));
+        }
+        *is_running = true;
+    }
+
+    let result = consolidate_inner(&plugin, args).await;
+
+    *plugin.state().consolidate_lock.lock().unwrap() = false;
+    result
+}
+
+async fn consolidate_inner(
+    plugin: &Plugin<PluginState>,
+    args: serde_json::Value,
+) -> Result<serde_json::Value, anyhow::Error> {
     let mut rpc = ClnRpc::new(
         Path::new(&plugin.configuration().lightning_dir).join(&plugin.configuration().rpc_file),
     )
@@ -208,8 +226,8 @@ pub async fn consolidate_below(
 
                 #[allow(clippy::cast_possible_truncation)]
                 #[allow(clippy::cast_sign_loss)]
-                match consolidate(
-                    plugin.clone(),
+                match consolidate_inner(
+                    &plugin,
                     json!({"feerate":(f64::from(blkcnt6_feerate)*fee_multi).round() as u64,
                            "min_utxos":min_utxos_count}),
                 )
